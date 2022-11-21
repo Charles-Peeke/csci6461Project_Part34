@@ -10,7 +10,7 @@ Authors: Charles, Ethan, Sam, Harshini
 The task is to design a Von Neumann Architecture Simulator that respresents the registers, memory, and processing within a procesor. 
 * Part 1 can be sumarized to the GUI with simple Load and Store functions for interacting with memory.
 * Part 2 can be sumarized to contain many instructions for the CPU as well as cache and more robust GUI features.
-
+* Part 3 can be sumarized to contain an additional layer of functionality. Now registers support characters as well as integers, and can handle a more complex program.
 
 
 ----
@@ -60,3 +60,16 @@ This boot program will be loaded into memory automatically at the start of the p
 The goal of the test program 1 is to take in 20 numbers from the user input (range of 0 to 65,535) and then one number to test against the previous 20. The first 20 numbers will be saved and compared against the last number. The goal of this program is to return which of the 20 numbers provided is closest to the final number.
 * In a sequence of number 10, 20, 30, ... 190, 200, for example, if 12 was inputted as the 21st number, the console would display 10. 
 If you run the program through once, memory will still be set to your program, so you must use the IPL to reload instruction and memory for the program to be executed again.
+### program2
+The goal of program2 is to read a paragraph of text, load it into memory, then ask the user for a word and find said word within said test.
+* Press IPL Button. Locate Program2.txt
+    * If it has loaded successfully, press okay and the prompt will come up to find the paragraph
+    * Locate the paragraph of text.
+* From here, with the program and text loaded, press the run button. This will have read the text into memory and now display it on the developer console with enter characters and all.
+* Now, the prompt will show up to end a character (or number).
+* Please enter the character for your word one letter at a time. 
+    * For example, "GWU" would be 
+    * "G">enter "W">enter "U">enter "">enter
+    * When your word is done, please hit enter without any input. This indicates that you have entered the whole word.
+* The program will print your word in the developer console and search for it in the text
+* The output will contain sentence number, and word number. Please note that the indexing may be 1 off from what you expect due to extra characters that may have emerged in your paragraph. Spaces, etc. can all throw off the count.

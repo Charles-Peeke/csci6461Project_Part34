@@ -1,3 +1,9 @@
+/**
+ * CSCI 6461 - Fall 2022
+ * 
+ * Input Switches Class handles the GUI and Functionality of the switches across the top of the simulator
+ */
+
 package GUI;
 
 import javax.swing.*;
@@ -9,7 +15,7 @@ import java.awt.event.*;
 
 public class InputSwitches {
 
-	// switches for loading values/instructions
+    // GUI Panel, Buttons, and Values
 	private final JPanel switchPanel;
 	private JToggleButton[] switches;
 	private String switchValue;
@@ -58,10 +64,9 @@ public class InputSwitches {
 				}
 			});
 			switches[i] = button;
-			// add the switch to the panel from left -> right
 			Utilities.addComponent(button, switchPanel, i, 0, 1);
 		}
-		// add labels for the different bits
+		// Add Labels of the total switch Instruction
 		Utilities.addComponent(new JLabel("Operation"), switchPanel, 0, 2, 6); 
 		Utilities.addComponent(new JLabel("GPR"), switchPanel, 6, 2, 2);
 		Utilities.addComponent(new JLabel("IXR"), switchPanel, 8, 2, 2);
@@ -84,9 +89,7 @@ public class InputSwitches {
 	 * @param value -> the binary string value to set the switches to
 	 */
 	public void setSwitchValue(String value) {
-		if (value.length() != switches.length) {
-			return;
-		}
+		if (value.length() != switches.length) { return; }
 		for (int i = 0; i < value.length(); i++) {
 			switches[i].setSelected(value.charAt(i) == '1');
 		}

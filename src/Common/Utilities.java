@@ -1,3 +1,12 @@
+/**
+ * CSCI 6461 - Fall 2022
+ * 
+ * Common Utiltity Functions for 
+ * * GUI
+ * * Floating Point Registers
+ * * Signed / Unsigned Numbers
+ */
+
 package Common;
 
 import javax.swing.*;
@@ -62,6 +71,12 @@ public class Utilities {
 		return -(unsignedVal + 1);
 	}
 
+    /**
+	 * Convert int ot string, assuming it is unsigned
+	 * @param value -> the int to be converted
+	 * @param length -> the length of the string to be returned
+	 * @return -> the result of the int value with length length in binary
+	 */
 	public static String intToUnsignedBinary(int value, int length) {
 		String binary = Integer.toBinaryString(value);
 		String result;
@@ -75,6 +90,12 @@ public class Utilities {
 		return result;
 	}
 
+    /**
+	 * Convert floating point value to int
+	 * @param value -> the int to be converted
+	 * @param length -> the length of the string to be returned
+	 * @return -> the result of the int value with length length in binary
+	 */
 	public static int floatToFixed(int signAndExponent, int mantissa) {
 		String s = Utilities.intToSignedBinary(signAndExponent, 8);
 		int sign = Integer.parseInt(s.substring(0, 1));

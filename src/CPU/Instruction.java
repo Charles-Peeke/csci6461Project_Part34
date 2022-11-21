@@ -1,13 +1,19 @@
+/**
+ * CSCI 6461 - Fall 2022
+ * 
+ * Instruction - Contains all Instructions needed for P1-3
+ * * P2 had a massive switch statement, P3 now has an enum construction 
+ */
+
 package CPU;
 
 import Common.Common;
 import Common.Utilities;
 import Memory.Memory;
 
-
 public enum Instruction {
 
-    // octal 0
+    // 0 - HLT
     HALT (0, "HLT") {
         @Override
         public void decode(CPU cpu) {}
@@ -24,11 +30,8 @@ public enum Instruction {
             // otherwise not running boot or user program; probably running tests
         }
     },
-    /**
-     * Load register from memory
-     * r <-- c(EA)
-     * Octal 1
-     */
+    
+    // 1 - LDR
     LDR (1, "LDR") {
         @Override
         public void decode(CPU cpu) {
@@ -42,11 +45,8 @@ public enum Instruction {
             cpu.getIrr().setValue(cpu.getMbr().getValue());
         }
     },
-    /**
-     * Store register to memory
-     * memory(EA) <-- c(r)
-     * Octal 2
-     */
+    
+    // 2 - STR
     STR (2, "STR") {
         @Override
         public void decode(CPU cpu) {
@@ -61,11 +61,8 @@ public enum Instruction {
             cpu.getIrr().setValue(val);
         }
     },
-    /**
-     * Load register with address
-     * r <-- EA
-     * Octal 3
-     */
+    
+    // 3 - LDA
     LDA (3, "LDA") {
         @Override
         public void decode(CPU cpu) {
@@ -79,11 +76,8 @@ public enum Instruction {
             cpu.getIrr().setValue(cpu.getIar().getValue());
         }
     },
-	/** Add Memory to Register
-	 * 
-	 * r <- content of register + content of EA
-	 * Octal 4
-	 */
+	
+    // 4 - AMR
     AMR (4, "AMR") {
         @Override
         public void decode(CPU cpu) {
@@ -104,11 +98,8 @@ public enum Instruction {
             }
         }
     },
-	/** Subtract Memory From Register
-	 * 
-	 * r <- content of register - content of EA
-	 * Octal 5
-	 */
+	
+    // 5 - SMR
     SMR (5, "SMR") {
         @Override
         public void decode(CPU cpu) {
@@ -129,14 +120,8 @@ public enum Instruction {
             }
         }
     },
-	/**Add Immediate to register 
-	 *
-	 * r <- content of register + Immediate
-	 * if Immediate = 0 -> do nothing
-	 * if content of register = 0 
-	 * -> load register with Immediate
-	 * Octal 6
-	 */
+	
+    // 6 - AIR
     AIR (6, "AIR") {
         @Override
         public void decode(CPU cpu) {
@@ -152,11 +137,8 @@ public enum Instruction {
             cpu.getAlu().add(cpu.getIrr(), r, cpu.getIar().getValue());
         }
     },
-	/** Subtract Immediate from register 
-	 * 
-	 * r <- content of register - Immediate
-	 * Octal 7
-	 */
+	
+    // 7 - SIR
     SIR (7, "SIR") {
         @Override
         public void decode(CPU cpu) {
@@ -172,13 +154,10 @@ public enum Instruction {
             cpu.getAlu().subtract(cpu.getIrr(), r, cpu.getIar().getValue());
         }
     },
-    /**
-     * Jump if content of register = 0.
-     * octal 10
-     */
+    
+    // 10 - JZ
     JZ (8, "JZ") {
         @Override
-        // nothing to be done in the decode portion; only PC is updated
         public void decode(CPU cpu) {}
 
         @Override
@@ -191,15 +170,11 @@ public enum Instruction {
             }
         }
     },
-    /**
-     * Jump if content of register != 0.
-     * octal 11
-     */
+
+    // 11 - JNE
     JNE (9, "JNE") {
         @Override
-        public void decode(CPU cpu) {
-        	//do nothing, only PC is updated
-        }
+        public void decode(CPU cpu) { }
 
         @Override
         public void execute(CPU cpu) {
@@ -211,16 +186,9 @@ public enum Instruction {
             }
         }
     },
-    /**
-     * Jump if condition code
-     * cc replaces r for this instruction. cc takes value 0, 1, 2, 3
-     * if the bit in the specified condition code register is set, PC <-- EA
-     * Otherwise, increment PC as normal
-     * Octal 12
-     */
+    // 12 - JCC
     JCC (10, "JCC") {
         @Override
-        // do nothing, only PC is updated
         public void decode(CPU cpu) {}
 
         @Override
@@ -232,13 +200,9 @@ public enum Instruction {
             }
         }
     },
-    /**
-     * Unconditional jump --> load PC with EA
-     * Octal 13
-     */
+    // 13 - JMA
     JMA (11, "JMA") {
         @Override
-        //do nothing, only PC is updated
         public void decode(CPU cpu) {}
 
         @Override
@@ -247,12 +211,7 @@ public enum Instruction {
         	// cpu.setGpr(false);
         }
     },
-    /**
-     * Jump to address, save PC in gpr3
-     * R0 should contain pointer to arguments
-     * Argument list should end with -1 (all 1s) as value
-     * octal 14
-     */
+    // 14 - JSR
     JSR (12, "JSR") {
         @Override
         public void decode(CPU cpu) {
@@ -269,14 +228,7 @@ public enum Instruction {
         	// Argument list should end with -1 (all 1s) value --> stored in R0 (on the user)
         }
     },
-    /**
-     * Return from subroutine w/ return code as Immed portion (optional)
-     * stored in the instruction's address field.
-     * R0 <-- Immed; PC <-- c(R3)
-     * IX, I fields are ignored
-     *
-     * Octal 15
-     */
+    // 15 - RFS
     RFS (13, "RFS") {
         @Override
         public void decode(CPU cpu) {
@@ -303,11 +255,7 @@ public enum Instruction {
             cpu.setNextPc(returnAddress);
         }
     },
-    /**
-     * Subtract one and branch
-     * only branch if c(r) > 0
-     * octal 16
-     */
+    // 16 - SOB
     SOB (14, "SOB") {
         @Override
         public void decode(CPU cpu) {}
@@ -316,21 +264,15 @@ public enum Instruction {
         public void execute(CPU cpu) {
             Register r = cpu.selectGpr(cpu.getRs1().getValue());
             r.setValue(r.getValue() - 1);
-            // only branch if c(r) > 0
             if (r.getValue() > 0) {
                 cpu.setNextPc(cpu.getIar().getValue());
             }
         }
     },
-    /**
-     * Jump greater than or equal to
-     * if c(r) >=, then PC <-- EA
-     * Else PC <-- PC + 1
-     */
-    // octal 17
+    
+    // 17 - JGE
     JGE (15, "JGE") {
         @Override
-        // do nothing, only PC is updated
         public void decode(CPU cpu) {}
 
         @Override
@@ -343,17 +285,7 @@ public enum Instruction {
             }
         }
     },
-	/** Multiply Register by Register
-	 * 
-	 * RX and RX+1 = content of RX * content of RY
-	 * RX and RY must be 0 or 2
-	 * Note: Rx takes the place of the GPR bits in the instruction
-	 * Note: Ry takes the place of the IXR bits " "
-	 * RX contains higher order bits
-	 * RX + 1 contains lower order bits of the result
-	 * if overflow then set OVERFLOW
-	 * Octal 20
-	 */
+	// 20 - MLT
     MLT (16, "MLT") {
         @Override
         public void decode(CPU cpu) {}
@@ -378,16 +310,7 @@ public enum Instruction {
             cpu.getAlu().multiply(RX, RY, cpu.selectGpr(RXNum+1));
         }
     },
-	/** Divide Register by Register
-	 * RX and RX + 1 = content of RX / content of RY
-	 * RX and RY must be 0 or 2
-	 * RX contains the quotient
-	 * RX + 1 contains the remainder
-	 * if content of RY = 0
-	 * then set conditional code register 3 to 1
-	 * DIVZERO flag is set
-	 * Octal 21
-	 */
+	// 21 - DVD
     DVD (17, "DVD") {
         @Override
         public void decode(CPU cpu) {}
@@ -412,13 +335,7 @@ public enum Instruction {
             cpu.getAlu().divide(RX, RY, cpu.selectGpr(RXNum+1));
         }
     },
-	/** Test the Equality of Register and Register
-	 * 
-	 * if content of RX = content of RY
-	 * then set conditional code register4 to 1
-	 * else conditional code register = 0
-	 * Octal 22
-	 */
+	// 22 - TRR
     TRR (18, "TRR") {
         @Override
         public void decode(CPU cpu) {}
@@ -430,9 +347,7 @@ public enum Instruction {
             cpu.getAlu().testEquality(RX, RY);
         }
     },
-	/** Content of RX = content of RX AND content of RY
-	 *  Octal 23
-	 */
+	// 23 - AND
     AND (19, "AND") {
         @Override
         public void decode(CPU cpu) {}
@@ -444,9 +359,7 @@ public enum Instruction {
             RX.setValue(cpu.getAlu().logicalAnd(RX, RY));
         }
     },
-	/** Content of RX = content of RX ORR content of RY
-	 *  Octal 24
-	 */
+	// 24 - ORR
     ORR (20, "ORR") {
         @Override
         public void decode(CPU cpu) {}
@@ -458,9 +371,7 @@ public enum Instruction {
             RX.setValue(cpu.getAlu().logicalOr(RX, RY));
         }
     },
-	/** Content of RX = NOT content of RX
-	 *  Octal 25
-	 */
+	// 25 - NOT
     NOT (21, "NOT") {
         @Override
         public void decode(CPU cpu) {}
@@ -472,17 +383,7 @@ public enum Instruction {
             RX.setValue(cpu.getAlu().logicalNot(RX));
         }
     },
-    /**  todo: IMPLEMENTED IN PHASE 3
-     * Traps to memory location 0
-     * PC + 1 is stored in memory location 2
-     * Memory location can have 16 entries (for each routine)
-     * When trap instruction is executed
-     * it goes to routine whose address is in mem location 0
-     * executes that instruction
-     * and returns to instruction at mem location 2
-     * the PC + 1 of the trap instruction is now at mem location 2
-     * Octal 30
-     */
+    // 30 - TRAP
     TRAP (24, "TRAP") {
         @Override
         public void decode(CPU cpu) {}
@@ -493,16 +394,7 @@ public enum Instruction {
             cpu.getMemory().insert(cpu.getPc().getValue()+1,2);
         }
     },
-	/**Shift Register by Count
-	 * content of register is shifted
-	 * R is 6th and 7th bit
-	 * A/L is 8th bit from left
-	 * L/R is 9th bit from left
-	 * shift left if L/R = 1 else shift right if L/R = 0
-	 * Count = 1 -> 15
-	 * if Count = 0, then no shift
-	 * Octal 31
-	 */
+	// 31 - SRC
     SRC (25, "SRC") {
         @Override
         public void decode(CPU cpu) {
@@ -522,12 +414,7 @@ public enum Instruction {
             cpu.getIrr().setValue(result);
         }
     },
-	/** Rotate Register by Count
-	 * content of register rotated
-	 * Left if L/R = 1 and right if L/R = 0
-	 * and if A/L = 1
-	 * Octal 32
-	 */
+	// 32 - RRC
     RRC (26, "RRC") {
         @Override
         public void decode(CPU cpu) {}
@@ -560,125 +447,8 @@ public enum Instruction {
         	}
         }
     },
-    /**
-     * Load index register from memory
-     * Xx <-- c(EA)
-     * Octal 41
-     */
-
-    LDX (33, "LDX") {
-        @Override
-        public void decode(CPU cpu) {
-            int ixVal = cpu.getIxBits();
-            if (ixVal == 0) {
-                System.out.println("Fault: no index register specified in LDX");
-                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
-            }
-            cpu.getRs1().setValue(ixVal);
-            cpu.setTargetLocation(Common.REGISTER);
-            cpu.setRegisterType(Common.IXR);
-        }
-
-        @Override
-        public void execute(CPU cpu) {
-            // irr = mbr
-            cpu.getIrr().setValue(cpu.getMbr().getValue());
-        }
-    },
-    /**
-     * Store index register to memory
-     * memory(EA) <-- c(Xx)
-     * Octal 42
-     */
-    STX (34, "STX") {
-        @Override
-        public void decode(CPU cpu) {
-            int ixVal = cpu.getIxBits();
-            if (ixVal == 0) {
-                System.out.println("Fault: no index register specified in LDX");
-                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
-            }
-            cpu.getRs1().setValue(ixVal);
-            cpu.setTargetLocation(Common.MEMORY);
-            cpu.setRegisterType(Common.IXR);
-        }
-
-        @Override
-        public void execute(CPU cpu) {
-            // set the irr to the value in the specified index register
-            int val = cpu.selectIxr(cpu.getRs1().getValue()).getValue();
-            cpu.getIrr().setValue(val);
-        }
-    },
-    /**
-     * Input character to register from device
-     * Octal 61
-     */
-    IN (49, "IN") {
-        @Override
-        public void decode(CPU cpu) {
-            // Ignore ix, i for this instruction
-            cpu.setIxiflag(false);
-        }
-
-        @Override
-        public void execute(CPU cpu) {
-            int devId = cpu.getIar().getValue();
-            if (devId == DEVID.KEYBOARD.getId()) {
-                // cpu handles setting register value
-                cpu.getKeyboardInput();
-            } else if (devId == DEVID.CARD_READER.getId()) {
-                // todo: what is the card reader? do we need to implement?
-            } else {
-                // otherwise, invalid devid for this instruction
-                System.out.println("Invalid devid for IN instruction");
-                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
-            }
-        }
-    },
-    /**
-     * Output character to device from register
-     * Octal 62
-     */
-    OUT (50, "OUT") {
-        @Override
-        public void decode(CPU cpu) {
-            // Ignore ix, i for this instruction
-            cpu.setIxiflag(false);
-        }
-
-        @Override
-        public void execute(CPU cpu) {
-            int devId = cpu.getIar().getValue();
-            if (devId == DEVID.PRINTER.getId()) {
-                // output register to console
-                cpu.printToConsole(cpu.selectGpr(cpu.getRs1().getValue()));
-            } else {
-                // otherwise, invalid devid for this instruction
-                System.out.println("Invalid devid for IN instruction");
-                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
-            }
-        }
-    },
-    // octal 63
-	// Check Device Status to Register
-	// content of register = device status
-    CHK (51, "CHK") {
-        @Override
-        public void decode(CPU cpu) {}
-
-        @Override
-        public void execute(CPU cpu) {}
-    },
-
-    /**
-     * octal 33
-     * Floating Add Memory to Register
-     * c(fr) <- c(fr) + c(EA)
-     * c(fr) <- c(fr) + c(c(EA)) if 1 bit set
-     * fr must be 0 or 1
-     * OVERFLOW may be set
-     */
+    
+    // 33 - FADD
     FADD (27, "FADD"){
         @Override
         public void decode(CPU cpu) {
@@ -696,14 +466,7 @@ public enum Instruction {
         }
     },
 
-    /**
-     * octal 34
-     * Floating Subtract Memory From Register
-     * c(fr) <- c(fr) - c(EA)
-     * c(fr) <- c(fr) - c(c(EA)) if 1 bit set
-     * fr must be 0 or 1
-     * UNDERFLOW may be set
-     */
+    // 34 - FSUB
     FSUB(28, "FSUB"){
         @Override
         public void decode(CPU cpu) {
@@ -717,15 +480,8 @@ public enum Instruction {
             cpu.getAlu().subtract(fr,fr,eaContent);
         }
     },
-    /**
-     * octal 35
-     * Vector Add
-     * fr contains the length of the vectors
-     * c(EA) or c(c(EA)), if I bit set, is address of first vector
-     * c(EA+1) or c(c(EA+1)), if I bit set, is address of the second vector
-     * Let V1 be vector at address; Let V2 be vector at address+1
-     * Then, V1[i] = V1[i]+ V2[i], i = 1, c(fr).
-     */
+    
+    // 35 - VADD
     VADD(29, "VADD") {
         @Override
         public void decode(CPU cpu) {}
@@ -750,15 +506,8 @@ public enum Instruction {
         }
     },
 
-    /**
-     * octal 36
-     * Vector Subtract
-     * fr contains the length of the vectors
-     * c(EA) or c(c(EA)), if I bit set is address of first vector
-     * c(EA+1) or c(c(EA+1)), if I bit set is address of the second vector
-     * Let V1 be vector at address; Let V2 be vector at address+1
-     * Then, V1[i] = V1[i] - V2[i], i = 1, c(fr).
-     */
+    
+    // 36 - VSUB 
     VSUB(30, "VSUB"){
         @Override
         public void decode(CPU cpu) {}
@@ -787,13 +536,7 @@ public enum Instruction {
         }
     },
 
-    /**
-     * octal 37
-     * Convert to Fixed/FloatingPoint:
-     * If F = 0, convert c(EA) to a fixed point number and store in r.
-     * If F = 1, convert c(EA) to a floating point number and store in FR0.
-     * The r register contains the value of F before the instruction is executed.
-     */
+    // 37 - CNVRT
     CNVRT(31, "CNVRT"){
         @Override
         public void decode(CPU cpu) {}
@@ -821,13 +564,52 @@ public enum Instruction {
             }
         }
     },
+   
+    // 41 - LDX
+    LDX (33, "LDX") {
+        @Override
+        public void decode(CPU cpu) {
+            int ixVal = cpu.getIxBits();
+            if (ixVal == 0) {
+                System.out.println("Fault: no index register specified in LDX");
+                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
+            }
+            cpu.getRs1().setValue(ixVal);
+            cpu.setTargetLocation(Common.REGISTER);
+            cpu.setRegisterType(Common.IXR);
+        }
 
-    /**
-     * octal 50
-     * Load Floating Register From Memory, fr = 0..1
-     * fr <− c(EA), c(EA+1)
-     * fr <- c(c(EA), c(EA)+1), if I bit set
-     */
+        @Override
+        public void execute(CPU cpu) {
+            // irr = mbr
+            cpu.getIrr().setValue(cpu.getMbr().getValue());
+        }
+    },
+    
+    // 42 - STX
+    STX (34, "STX") {
+        @Override
+        public void decode(CPU cpu) {
+            int ixVal = cpu.getIxBits();
+            if (ixVal == 0) {
+                System.out.println("Fault: no index register specified in LDX");
+                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
+            }
+            cpu.getRs1().setValue(ixVal);
+            cpu.setTargetLocation(Common.MEMORY);
+            cpu.setRegisterType(Common.IXR);
+        }
+
+        @Override
+        public void execute(CPU cpu) {
+            // set the irr to the value in the specified index register
+            int val = cpu.selectIxr(cpu.getRs1().getValue()).getValue();
+            cpu.getIrr().setValue(val);
+        }
+    },
+
+    
+    // 50 - DLFR
     LDFR(40, "LDFR"){
         @Override
         public void decode(CPU cpu) {
@@ -841,12 +623,7 @@ public enum Instruction {
         }
     },
 
-    /**
-     * octal 51
-     * Store Floating Register To Memory, fr = 0..1
-     * EA, EA+1 <− c(fr)
-     * c(EA), c(EA)+1 <- c(fr), if I-bit set
-     */
+    // 51 - STFR
     STFR(41, "STFR"){
         @Override
         public void decode(CPU cpu) {
@@ -858,6 +635,60 @@ public enum Instruction {
         public void execute(CPU cpu) {
             // loaded values handled in CPU.java
         }
+    },
+    
+    // 61 - IN
+    IN (49, "IN") {
+        @Override
+        public void decode(CPU cpu) {
+            // Ignore ix, i for this instruction
+            cpu.setIxiflag(false);
+        }
+
+        @Override
+        public void execute(CPU cpu) {
+            int devId = cpu.getIar().getValue();
+            if (devId == DEVID.KEYBOARD.getId()) {
+                // cpu handles setting register value
+                cpu.getKeyboardInput();
+            } else if (devId == DEVID.CARD_READER.getId()) {
+                // todo: what is the card reader? do we need to implement?
+            } else {
+                // otherwise, invalid devid for this instruction
+                System.out.println("Invalid devid for IN instruction");
+                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
+            }
+        }
+    },
+    
+    // 62 - OUT
+    OUT (50, "OUT") {
+        @Override
+        public void decode(CPU cpu) {
+            cpu.setIxiflag(false);
+        }
+
+        @Override
+        public void execute(CPU cpu) {
+            int devId = cpu.getIar().getValue();
+            if (devId == DEVID.PRINTER.getId()) {
+                // output register to console
+                cpu.printToConsole(cpu.selectGpr(cpu.getRs1().getValue()));
+            } else {
+                // otherwise, invalid devid for this instruction
+                System.out.println("Invalid devid for IN instruction");
+                cpu.handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
+            }
+        }
+    },
+    
+    // 63 - CHK
+    CHK (51, "CHK") {
+        @Override
+        public void decode(CPU cpu) {}
+
+        @Override
+        public void execute(CPU cpu) {}
     };
 
 
@@ -870,21 +701,19 @@ public enum Instruction {
     }
 
     /**
-     * Decode portion of the instruction --> mainly used to set rs1 and corresponding flags according to the type of
-     * instruction (e.g. where to store the result of the instruction: LDR is in the REGISTER).
+     * Decode portion of the instruction
      * @param cpu -> A reference to the cpu to be able to access internal registers
      */
     public abstract void decode(CPU cpu);
 
     /**
-     * `Execute` portion of the instruction --> mainly used to set the irr in preparation for the `deposit` step.
+     * `Execute` portion of the instruction
      * @param cpu -> A reference to the cpu to be able to access internal registers
      */
     public abstract void execute(CPU cpu);
 
     /**
-     * Returns the Instruction enum based on the opcode value. VeRY useful since we don't need to use an `if`
-     * statement for eveRY case.
+     * Returns the Instruction enum based on the opcode value
      * @param opcode -> the opcode value obtained from parsing the instruction
      * @return -> the corresponding Instruction enum if found, otherwise null
      */
@@ -898,7 +727,5 @@ public enum Instruction {
     }
 
 
-    public String toString() {
-        return name;
-    }
+    public String toString() { return name; }
 }

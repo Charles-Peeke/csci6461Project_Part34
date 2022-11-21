@@ -1,3 +1,12 @@
+/**
+ * CSCI 6461 - Fall 2022
+ * 
+ * CPU Class controls the coded logic between
+ * the ALU, the Registers, the Instructions, and Memory
+ * 
+ * Consider this the 'brain' of the overall simulator
+ */
+
 package CPU;
 
 import javax.swing.*;
@@ -16,27 +25,28 @@ import java.io.InputStreamReader;
 
 public class CPU {
 
-	// main panel to display registers on
+	// Simulator GUI Panel
 	private final JPanel mainPanel;
 	private Thread runThread;
 
-	// Reference to memory
+	// Memory Variable
 	private final Memory Memory;	private final Cache Cache;
 
-	// Reference to alu
+	// ALU 
 	private final ALU ALU;
 
 	// User Input 
 	private final InputSwitches InputSwitches;
 	private JTextArea DevConsole;	private JTextField InputText;
 
-	// General purpose registers
+	// General Purpose Registers
 	private Register GPR0;	private Register GPR1;
 	private Register GPR2;	private Register GPR3;
 
-	// index registers
+	// Index Registers
 	private Register IX1;	private Register IX2;	private Register IX3;
-
+    
+    // Floating Registers 
 	private RegisterFloat R0;	private RegisterFloat R1;
 
 	// Other Registers
@@ -52,10 +62,7 @@ public class CPU {
 	private Register IR;
 
 	// Memory Fault Register
-	private Register mfr;
-
-
-	// Internal registers
+	private Register MFR;
 
 	// Internal address register
 	private Register IAR;	private JLabel IARLabel;	
@@ -77,105 +84,85 @@ public class CPU {
 	// Next PC location
 	private int nextPc;
 	
-	// the current instruction being executed
-	private Instruction currentInstruction;
+	// Instruction Variables
+	private Instruction currentInstruction;	private Instruction lastInstruction;	
+    private JLabel currentInstructionDisplay;
 
-	private Instruction lastInstruction;
-	// displays the current instruction being executed on the front panel
-	private JLabel currentInstructionDisplay;
-
-	private int opcode;
-	private int ix;
-	private int GPRSelect;
-	private int IndirectFlagg;
-	private int memoryLocation;
-
-	private int ShiftLeft;
-	private int ShiftRight;
-	private int Count;
-	
-	// IX and I use Flag for ignoring purposes
+	private int OPCode;	private int ix;	private int GPRSelect;
+	private int IndirectFlagg;	private int memoryLocation;
+	private int ShiftLeft;	private int ShiftRight;	private int Count;
 	private boolean useIxi = true;
 
+    // Flags for Offsets / Memory allocations
 	private boolean program1 = false;
 	private boolean runningBoot = false;
 
 	
 	public CPU(JPanel mainPanel, Memory memory, InputSwitches switches) {
+        // Variable Creations
 		this.mainPanel = mainPanel;
 		this.Memory = memory;
 		this.InputSwitches = switches;
 		ALU = new ALU();
 		Cache = new Cache();
 
-		// create registers and add to the panel
+        // Initializing Functions
 		addGeneralPurposeRegisters();
-		addIndexRegisters();
-		addFloatRegisters();
-		addPC();
-		addMAR();
-		addMBR();
-		addIR();
-		addMFR();
-		addRunHalt();
-		addInternalRegisters();
-		addRxRy();
+		addIndexRegisters();		addFloatRegisters();
+		addPC();		addMAR();		addMBR();
+		addIR();		addMFR();		addRunHalt();
+		addInternalRegisters();		addRxRy();
 		addIODevices();
 		addCurrentInstructionDisplay();
-		ALU.addConditionCodeBits(mainPanel);
+		ALU.addConditionCodeBits(mainPanel); // Display Purposes
 
 		addListeners();
 
-		// create thread for CPU execution
+		// Create Thread to prevent Infinite Looping
 		createRunThread();
 	}
 
 	public void boot() {
-		// set PC to start of boot program
+		// Boot Program Offset
 		PC.setValue(Common.BOOT_PROGRAM_ADDRESS);
-
-		// load boot program into memory
 		loadBootProgram();
-
 		runningBoot = true;
-		// will execute until boot program halts
+		// Run the Program
 		while(runningBoot) {
 			singleInstructionCycle();
 		}
-		// finished boot program; user can now load program via IPL file
 		Memory.setReservedLocations();
 	}
 
 	public void handleProgramTermination() {
-		// user program finished
 		Memory.setRunningUserProgram(false);
-		// set PC to start of user program
-		DevConsole.append("\nProgram finished.\nRun program again, or load a new one with IPL button.\n");
-		// un-halt the machine to be ready for execution
-		setHalted(false);
-		paused = true;
+		DevConsole.append("\nProgram finished.\nUse the IPL button.\n");
+		setHalted(false);		paused = true;
 	}
 
 	/**
-	 * Executes one full instruction cycle: fetch, decode, execute, store
+	 * Executes one full instruction cycle: 
+     * * Fetch
+     * * Decode
+     * * Execute
 	 */
 	public void singleInstructionCycle() {
 		fetchInstruction();
 		decodeInstruction();
 		fetchOperand();
 		execute();
-		// if the machine wasn't halted, continue as normal
+        
+        // Special Case for Halt
 		if (!halt.isSelected()) {
 			depositResults();
 			nextInstruction();
-
 			resetFlags();
 			updateInternalDisplays();
 		}
 	}
 
 	/**
-	 * Implements the fetch portion of the simulator (step 1).
+	 * Instruction Cycle - Step 1 - Fetch Instruction
 	 * 
 	 * This transfers the address of the next instruction (indicated by the PC) to the MAR, 
 	 * and loads the MAR into the MBR.
@@ -192,7 +179,7 @@ public class CPU {
 			
 		}else {
 			System.out.println("Address is NOT in cache, so retrieve from Memory and add to Cache");
-			int data = Memory.getDirect(PC.getValue());
+			int data = Memory.load(PC.getValue());
 
 			MBR.setValue(data);
 		}
@@ -201,7 +188,10 @@ public class CPU {
 	}
 
 	/**
-	 * Implements the decode portion of the simulator (step 2).
+	 * Instruction Cycle - Step 2 - Decode Instruction
+	 * 
+	 * This transfers the address of the next instruction (indicated by the PC) to the MAR, 
+	 * and loads the MAR into the MBR.
 	 */
 	private void decodeInstruction() {
 		// store MBR into IR
@@ -213,7 +203,7 @@ public class CPU {
 		RS1.setValue(GPRSelect);
 
 		lastInstruction = currentInstruction;
-		currentInstruction = Instruction.getInstruction(opcode);
+		currentInstruction = Instruction.getInstruction(OPCode);
 		// update the front panel display
 		updateCurrentInstructionDisplay();
 
@@ -221,39 +211,34 @@ public class CPU {
 			currentInstruction.decode(this);
 			//System.out.println("Instruction is " + currentInstruction);
 		} else {
-			System.out.println("Error decoding instruction: unknown opcode: " + opcode + " (decimal).");
+			System.out.println("Error decoding instruction: unknown opcode: " + OPCode + " (decimal).");
 			handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
 		}
 	}
 
 	/**
-	 * Locates and fetches the operand data (step 3).
+	 * Instruction Cycle - Step 2a - Operation
+	 * 
 	 */
 	private void fetchOperand() {
-		// Move the first operand address from the ir to the iar
 		IAR.setValue(memoryLocation);
 
-		// if not using immediate, IXR and indirect bits can be used
 		if(useIxi) {
-			// handle address indexing; can only do so if we aren't targeting an index register
 			if (!registerType.equals(Common.IXR)) {
 				if (ix != 0) {
 					IAR.setValue(IAR.getValue() + selectIxr(ix).getValue());
 					System.out.println("Iar after indexing: " + IAR.getValue());
 				}
 			}
-			// if indirect bit is set
 			if (IndirectFlagg == 1) {
 				System.out.println("Indirect addressing");
 				IAR.setValue(Memory.get(IAR.getValue()));
 			}
 		}
-
-		// move contents of IAR to MAR
 		MAR.setValue(IAR.getValue());
 		MBR.setValue(Memory.get(MAR.getValue()));
 
-		// check for fault
+        // Fault Checking
 		int fault = Memory.getMemoryFault();
 		if (fault != -1) {
 			handleMachineFault(fault);
@@ -261,20 +246,22 @@ public class CPU {
 	}
 
 	/**
-	 * Execute the operation (Step 4).
+	 * Instruction Cycle - Step 3 - Execute
+	 * 
 	 */
 	private void execute() {
 		if (currentInstruction != null) {
 			currentInstruction.execute(this);
 		} else {
-			// todo: raise fault; unknown instruction
-			System.out.println("Error executing instruction: unknown opcode: " + opcode + " (decimal).");
+			// Fault Checking
+			System.out.println("Error executing instruction: unknown opcode: " + OPCode + " (decimal).");
 			handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
 		}
 	}
 
 	/**
-	 * Store the results of the operation - the location is dependent on the instruction executed.
+	 * Instruction Cycle - Post Operation
+	 * Save Results to Memory or Registers
 	 */
 	private void depositResults() {
 		//logger info for debugging
@@ -311,13 +298,13 @@ public class CPU {
 			} else {
 				System.out.println("Storing value " + MBR.getValue() + " from register into memory location " + MAR.getValue());
 				// move contents of mbr to memory using the address in the mar
-				if (opcode != 2 && opcode != 34) {
+				if (OPCode != 2 && OPCode != 34) {
 					Cache.cacheInsert(MBR.getValue(), MAR.getValue(), Memory); //writing buffer is handled in here
 				} else {
 					Memory.insert(MBR.getValue(), MAR.getValue());
 				}
 			}
-			// check for fault
+			// Fault Checking
 			int fault = Memory.getMemoryFault();
 			if (fault != -1) {
 				handleMachineFault(fault);
@@ -336,7 +323,6 @@ public class CPU {
 			PC.setValue(nextPc);
 
 			System.out.println("pc: " + PC.getValue());
-			Memory.getMemoryTable().repaint();
 		}
 	}
 
@@ -348,25 +334,25 @@ public class CPU {
 	public void handleMachineFault(int id) {
 		switch (id) {
 			case 0:
-				mfr.setValue(1);
+				MFR.setValue(1);
 				break;
 			case 1:
-				mfr.setValue(2);
+				MFR.setValue(2);
 				break;
 			case 2:
-				mfr.setValue(4);
+				MFR.setValue(4);
 				break;
 			case 3:
-				mfr.setValue(8);
+				MFR.setValue(8);
 				break;
 			default:
 				System.out.println("Unknown machine fault; should not be here");
 				break;
 		}
 		// store pc at memory 5
-		Memory.insertDirect(PC.getValue(), 5);
+		Memory.store(PC.getValue(), 5);
 		// Load PC with value at memory 1
-		setNextPc(Memory.getDirect(1));
+		setNextPc(Memory.load(1));
 	}
 
 	/**
@@ -392,26 +378,21 @@ public class CPU {
 		// todo: reset cache
 		Memory.reset();
 
-		setProgram1(false);
+		displayRaw(false);
 	}
 
 	/**
 	 * Resets all the internal components of the CPU
 	 */
 	public void reset() {
-		// reset values for all the registers
-		GPR0.setValue(0);
-		GPR1.setValue(0);
-		GPR2.setValue(0);
-		GPR3.setValue(0);
-		IX1.setValue(0);
-		IX2.setValue(0);
+		// Reset Register Values
+		GPR0.setValue(0);	GPR1.setValue(0);
+		GPR2.setValue(0);	GPR3.setValue(0);
+		IX1.setValue(0);		IX2.setValue(0);
 		IX3.setValue(0);
-		RX.setValue(0);
-		RY.setValue(0);
-		R0.setValue(0);
-		R1.setValue(0);
-		// user program finished; return to start of it to run again if required
+		RX.setValue(0);		RY.setValue(0);
+		R0.setValue(0);		R1.setValue(0);
+
 		if (Memory.getRunningUserProgram()) {
 			PC.setValue(Common.USER_PROGRAM_OFFSET);
 			nextPc = Common.USER_PROGRAM_OFFSET;
@@ -419,49 +400,29 @@ public class CPU {
 			PC.setValue(0);
 			nextPc = 0;
 		}
-		MAR.setValue(0);
-		MARMem.setValue(Memory.get(MAR.getValue()));
-		MBR.setValue(0);
-		IR.setValue(0);
-		mfr.setValue(0);
+        // Reset Memory Register Values
+		MAR.setValue(0);		MARMem.setValue(Memory.get(MAR.getValue()));
+		MBR.setValue(0);		IR.setValue(0);		MFR.setValue(0);
 
-		// un halt the machine if halted
 		setHalted(false);
-
-		// reset ALU
 		ALU.reset();
 
-		// reset internal registers
-		IAR.setValue(0);
-		IARLabel.setText("0");
+		// Reset Interal Register Values (and Displays)
+		IAR.setValue(0);		IARLabel.setText("0");
+		IRR.setValue(0);		IRRLabel.setText("0");
+		RS1.setValue(0);		RS1Label.setText("0");
 
-		IRR.setValue(0);
-		IRRLabel.setText("0");
-
-		RS1.setValue(0);
-		RS1Label.setText("0");
-
-		// reset internal flags/other vars
+		// Reset Flags
 		resetFlags();
-		currentInstruction = null;
-		updateCurrentInstructionDisplay();
-		opcode = 0;
-		ix = 0;
-		GPRSelect = 0;
-		IndirectFlagg = 0;
-		memoryLocation = 0;
-
-		Memory.getMemoryTable().repaint();
+		currentInstruction = null;		updateCurrentInstructionDisplay();
+		OPCode = 0;		ix = 0;		GPRSelect = 0;
+		IndirectFlagg = 0;		memoryLocation = 0;
 	}
 
 	/**
 	 * Reset internal CPU flags.
 	 */
-	private void resetFlags() {
-		targetLocation = "";
-		registerType = "";
-		useIxi = true;
-	}
+	private void resetFlags() {	targetLocation = ""; registerType = "";	useIxi = true;	}
 
 	/**
 	 * Returns the corresponding general purpose register based on the input. Returns gpr0 by default
@@ -469,13 +430,9 @@ public class CPU {
 	 * @return -> the general purpose register to return
 	 */
 	public Register selectGpr(int gpr) {
-		if (gpr == 1) {
-			return GPR1;
-		} else if (gpr == 2) {
-			return GPR2;
-		} else if (gpr == 3) {
-			return GPR3;
-		}
+		if      (gpr == 1) { return GPR1; } 
+        else if (gpr == 2) { return GPR2; } 
+        else if (gpr == 3) { return GPR3; }
 		return GPR0;
 	}
 
@@ -485,13 +442,8 @@ public class CPU {
 	 * @return -> the general purpose register to return
 	 */
 	public RegisterFloat selectFpr(int fpr) {
-		if (fpr == 1) {
-			return R1;
-		}
-		// fpr can only be 0 or 1
-		if (fpr > 1) {
-			handleMachineFault(Common.ILLEGAL_OPERATION_CODE);
-		}
+		if (fpr == 1) {	return R1; }
+		if (fpr > 1) { handleMachineFault(Common.ILLEGAL_OPERATION_CODE); }
 		return R0;
 	}
 
@@ -501,13 +453,9 @@ public class CPU {
 	 * @return -> the index register to return
 	 */
 	public Register selectIxr(int ixr) {
-		if (ixr == 2) {
-			return IX2;
-		} else if (ixr == 3) {
-			return IX3;
-		} else {
-			return IX1;
-		}
+		if (ixr == 2) { return IX2; } 
+        else if (ixr == 3) { return IX3; } 
+        else { return IX1; }
 	}
 	
 	/**
@@ -519,7 +467,7 @@ public class CPU {
 		InputSwitches.setSwitchValue(binary);
 
 		// fetch register values and store in memory
-		opcode = Integer.parseInt(binary.substring(0, 6), 2);
+		OPCode = Integer.parseInt(binary.substring(0, 6), 2);
 		GPRSelect = Integer.parseInt(binary.substring(6, 8), 2);
 		ix = Integer.parseInt(binary.substring(8, 10), 2);
 		IndirectFlagg = Integer.parseInt(binary.substring(10, 11), 2);
@@ -530,17 +478,16 @@ public class CPU {
 		ShiftRight = Integer.parseInt(binary.substring(9, 10), 2);
 		Count = Integer.parseInt(binary.substring(12), 2);
 
-		RX = selectGpr(GPRSelect);
-		RY = selectGpr(ix);
+		RX = selectGpr(GPRSelect);	RY = selectGpr(ix);
 	}
 
 	private void loadBootProgram() {
 		System.out.println("Loading boot program");
-		// load boot program
 		try {
+            // Not sure if this will work on all computers.. Check after Jar File
 			InputStream instream = getClass().getResourceAsStream("/programs/boot.txt");
 			if (instream == null) {
-				System.out.println("Error reading boot program; input stream is null");
+				System.out.println("[ERROR] Boot Program is null.");
 				return;
 			}
 			BufferedReader br = new BufferedReader(new InputStreamReader(instream));
@@ -553,16 +500,16 @@ public class CPU {
 				System.out.println(new_value + " inserted into memory location " + new_location);
 				Memory.insert(new_value, new_location);
 			}
-			System.out.println("Loaded boot program into memory");
+			System.out.println("[SUCCESS] Loaded boot program into memory");
 		} catch (Exception e) {
-			System.out.println("No boot program found: " + e.getMessage());
+			System.out.println("[ERROR] No boot program found: " + e.getMessage());
 		}
 	}
 
 	/**
 	 * Outputs the value from the specified register to the machine console
-	 * @param r --> the register whose value is displayed. If r is storing a character, the ascii value
-	 *          of r's value will be displayed
+	 * @param r --> the register whose value is displayed. 
+     * If r is storing a character, the ascii value of r's value will be displayed
 	 */
 	public void printToConsole(Register r) {
 		// print just the number in the register instead of ascii value
@@ -570,11 +517,8 @@ public class CPU {
 			DevConsole.append(r.getValue() + " \n");
 		} else {
 			// handle "enter" character
-			if (r.getValue() == 13) {
-				DevConsole.append("\n");
-			} else {
-				DevConsole.append(Character.toString(r.getChar()));
-			}
+			if (r.getValue() == 13) { DevConsole.append("\n"); } 
+            else { DevConsole.append(Character.toString(r.getChar())); }
 		}
 	}
 
@@ -602,7 +546,7 @@ public class CPU {
 				int num = Integer.parseInt(input);
 				// if the num is too large
 				if (num > Math.pow(2, r.getLength())) {
-					JOptionPane.showMessageDialog(mainPanel, "Number is too large");
+					JOptionPane.showMessageDialog(mainPanel, "Number you entered is too large.\n0..."+ Math.pow(2, r.getLength()));
 					//System.out.println("User entered too large of a number");
 					tooLarge = true;
 				} else {
@@ -643,16 +587,11 @@ public class CPU {
 	 */
 	public void setHalted(boolean isHalted) {
 		// Enable/disable buttons accordingly. But, don't resume CPU execution until user presses run/single step
-		halt.setSelected(isHalted);
-		run.setEnabled(!isHalted);
-		singleStep.setEnabled(!isHalted);
+		halt.setSelected(isHalted);		run.setEnabled(!isHalted);		singleStep.setEnabled(!isHalted);
 	}
 
 	/**
-	 * Separate Thread for running Front Panel
-	 *
-	 * Running front panel requires its own thread, so halting is just a matter of
-	 * pausing the run thread if the halt button initiates a condition
+	 * Creating a thread specifically for the simulator to allow interactions while processing instructions
 	 */
 	private void createRunThread() {
 		runThread = new Thread("runThread") {
@@ -662,18 +601,10 @@ public class CPU {
 					// execute instructions while the machine is not halted
 					if (!paused) {
 						singleInstructionCycle();
-						if (PC.getValue() + 1 == 2048) {
-							break;
-						}
+						if (PC.getValue() + 1 == 2048) { break; }
 					} else {
-						// For loading PC with LD button
-						if (PC.getValue() != nextPc) {
-							nextPc = PC.getValue() + 1;
-							Memory.getMemoryTable().repaint();
-						}
-						try {
-							sleep(10);
-						} catch (java.lang.InterruptedException ignored) {}
+						if (PC.getValue() != nextPc) { nextPc = PC.getValue() + 1; }
+						try { sleep(10); } catch (java.lang.InterruptedException ignored) {}
 					}
 				}
 			}
@@ -681,15 +612,13 @@ public class CPU {
 	}
 
 	/**
-	 * Add listeners for run, halt, and single step. Also add a listener to connect the MAR memory
-	 * for display purposes.
+	 * Add Listeners for 3 main run buttons
+     * Run, Step and Halt.
 	 */
 	private void addListeners() {
 		run.addActionListener(ae -> {
 			// Start the CPU if it wasn't running; otherwise un-pause the machine
-			if (!runThread.isAlive()) {
-				runThread.start();
-			}
+			if (!runThread.isAlive()) {	runThread.start();	}
 			if (!Memory.getRunningUserProgram()) {
 				Memory.setRunningUserProgram(true);
 				reset();
@@ -720,13 +649,13 @@ public class CPU {
 	}
 
 	private void addGeneralPurposeRegisters() {
-		// initialize gprs fields
+        // GPU -> CPU
 		GPR0 = new Register("GPR 0", 16, InputSwitches, true);
 		GPR1 = new Register("GPR 1", 16, InputSwitches, true);
 		GPR2 = new Register("GPR 2", 16, InputSwitches, true);
 		GPR3 = new Register("GPR 3", 16, InputSwitches, true);
 
-		// add the general purpose registers to the panel
+		// GPR -> GUI
 		Utilities.addComponent(GPR0.getLabel(), mainPanel, 0, 0, 1);
 		Utilities.addComponent(GPR0.getTextField(), mainPanel, 1, 0, 1);
 		Utilities.addComponent(GPR0.getLoad(), mainPanel, 2, 0, 1);
@@ -745,12 +674,12 @@ public class CPU {
 	}
 
 	private void addIndexRegisters() {
-		// initialize ix fields
+		// IX -> CPU
 		IX1 = new Register("IX 1", 16, InputSwitches, true);
 		IX2 = new Register("IX 2", 16, InputSwitches, true);
 		IX3 = new Register("IX 3", 16, InputSwitches, true);
 
-		// add the index registers to the main panel
+		// IX -> GUI
 		Utilities.addComponent(IX1.getLabel(), mainPanel, 0, 6, 1);
 		Utilities.addComponent(IX1.getTextField(), mainPanel, 1, 6, 1);
 		Utilities.addComponent(IX1.getLoad(), mainPanel, 2, 6, 1);
@@ -765,11 +694,12 @@ public class CPU {
 	}
 
 	private void addFloatRegisters(){
+        // FLOPR -> CPU
 		R0 = new RegisterFloat("FR 0", 16, InputSwitches, true);
 		R1 = new RegisterFloat("FR 1", 16, InputSwitches, true);
 
-		// add the index registers to the main panel
-		Utilities.addComponent(R0.getLabel(), mainPanel, 0, 9, 1);
+        // FLOPR -> GUI		
+        Utilities.addComponent(R0.getLabel(), mainPanel, 0, 9, 1);
 		Utilities.addComponent(R0.getTextField(), mainPanel, 1, 9, 1);
 		Utilities.addComponent(R0.getLoad(), mainPanel, 2, 9, 1);
 
@@ -779,20 +709,22 @@ public class CPU {
 	}
 
 	private void addPC() {
-		// set up the program counter
+		// PC -> CPU
 		PC = new Register("PC", 12, InputSwitches, false);
 		nextPc = 0;
 
+        // PC -> GUI
 		Utilities.addComponent(PC.getLabel(), mainPanel, 6, 0, 1);
 		Utilities.addComponent(PC.getTextField(), mainPanel, 7, 0, 1, GridBagConstraints.LINE_END);
 		Utilities.addComponent(PC.getLoad(), mainPanel, 8, 0, 1);
 	}
 
 	private void addMAR() {
-		// set up the MAR
+		// MAR -> CPU
 		MAR = new Register("MAR", 12, InputSwitches, false);
 		MARMem = new Register("Mem @ MAR", 16, InputSwitches, false);
 
+        // MAR -> GUI
 		Utilities.addComponent(MAR.getLabel(), mainPanel, 6, 1, 1);
 		Utilities.addComponent(MAR.getTextField(), mainPanel, 7, 1, 1, GridBagConstraints.LINE_END);
 		Utilities.addComponent(MAR.getLoad(), mainPanel, 8, 1, 1);
@@ -802,72 +734,70 @@ public class CPU {
 	}
 
 	private void addMBR() {
-		// set up the MBR
+		// MBR -> CPU
 		MBR = new Register("MBR", 16, InputSwitches, true);
 
+        // MBR -> GUI
 		Utilities.addComponent(MBR.getLabel(), mainPanel, 6, 2, 1);
 		Utilities.addComponent(MBR.getTextField(), mainPanel, 7, 2, 1, GridBagConstraints.LINE_END);
 		Utilities.addComponent(MBR.getLoad(), mainPanel, 8, 2, 1);
 	}
 
 	private void addIR() {
-		// set up the IR
+		// IR -> CPU
 		IR = new Register("IR", 16, InputSwitches, false);
 
+        // IR -> GUI
 		Utilities.addComponent(IR.getLabel(), mainPanel, 6, 3, 1);
 		Utilities.addComponent(IR.getTextField(), mainPanel, 7, 3, 1, GridBagConstraints.LINE_END);
 	}
 
 	private void addMFR() {
-		// set up the MFR
-		mfr = new Register("MFR", 4, InputSwitches, false);
+		// MFR -> CPU
+		MFR = new Register("MFR", 4, InputSwitches, false);
 
-		Utilities.addComponent(mfr.getLabel(), mainPanel, 6, 4, 1);
-		Utilities.addComponent(mfr.getTextField(), mainPanel, 7, 4, 1, GridBagConstraints.LINE_END);
+        // MFR -> GUI
+		Utilities.addComponent(MFR.getLabel(), mainPanel, 6, 4, 1);
+		Utilities.addComponent(MFR.getTextField(), mainPanel, 7, 4, 1, GridBagConstraints.LINE_END);
 	}
 
 	/**
-	 * Add the run, single-step, and halt buttons used to control the execution of the machine
+	 * Run, Step, Halt Buttons
 	 */
 	private void addRunHalt() {
-		singleStep = new JButton("STEP");
 		run = new JButton("RUN");
+		singleStep = new JButton("STEP");
 		halt = new JToggleButton("HALT");
-		// setHalted(false);
 
 		Utilities.addComponent(singleStep, mainPanel, 1, 11, 1);
 		Utilities.addComponent(run, mainPanel, 2, 11, 1);
 		Utilities.addComponent(halt, mainPanel, 3, 11, 1);
 	}
 
-	/**
-	 * Initialize and add various internal registers to the front panel
-	 */
 	private void addInternalRegisters() {
 		IAR = new Register("IAR", 16, InputSwitches, true);
 		IARLabel = new JLabel("" + IAR.getValue());
 
-		Utilities.addComponent(IAR.getLabel(), mainPanel, 9, 2, 1);
-		Utilities.addComponent(IAR.getTextField(), mainPanel, 10, 2, 1);
-		Utilities.addComponent(IARLabel, mainPanel, 11, 2, 1);
-
 		IRR = new Register("IRR", 16, InputSwitches, true);
 		IRRLabel = new JLabel("" + IRR.getValue());
 		IRRLabel.setPreferredSize(new Dimension(30, 10));
+        
+		RS1 = new Register("RS1", 2, InputSwitches, false);
+		RS1Label = new JLabel("" + RS1.getValue());
+        
 		Utilities.addComponent(IRR.getLabel(), mainPanel, 9, 3, 1);
 		Utilities.addComponent(IRR.getTextField(), mainPanel, 10, 3, 1);
 		Utilities.addComponent(IRRLabel, mainPanel, 11, 3, 1);
 
-		RS1 = new Register("RS1", 2, InputSwitches, false);
-		RS1Label = new JLabel("" + RS1.getValue());
-		Utilities.addComponent(RS1.getLabel(), mainPanel, 9, 0, 1);
+		Utilities.addComponent(IAR.getLabel(), mainPanel, 9, 2, 1);
+		Utilities.addComponent(IAR.getTextField(), mainPanel, 10, 2, 1);
+		Utilities.addComponent(IARLabel, mainPanel, 11, 2, 1);
+		
+        Utilities.addComponent(RS1.getLabel(), mainPanel, 9, 0, 1);
 		Utilities.addComponent(RS1.getTextField(), mainPanel, 10, 0, 1, GridBagConstraints.LINE_END);
 		Utilities.addComponent(RS1Label, mainPanel, 11, 0, 1);
 	}
 
-	/**
-	 * Initialize the rx and ry registers
-	 */
 	private void addRxRy() {
 		RX = new Register("RX", 16, InputSwitches, true);
 		RY = new Register("RY", 16, InputSwitches, true);
@@ -1006,68 +936,33 @@ public class CPU {
 	public void setNextPc(int pcValue) {
 		nextPc = pcValue;
 		// on branches, account for user memory difference
-		if (Memory.getRunningUserProgram() && mfr.getValue() == 0) {
+		if (Memory.getRunningUserProgram() && MFR.getValue() == 0) {
 			nextPc += Common.USER_PROGRAM_OFFSET;
 		}
 	}
 
-	public void setProgram1(boolean b) {
+	public void displayRaw(boolean b) {
 		program1 = b;
 	}
 
-	public JToggleButton getHalt() {
-		return halt;
-	}
+	public JToggleButton getHalt() { return halt; }
 
-	public Register getPc() {
-		return PC;
-	}
+	public Register getPc() { return PC; }
 
-	public Register getRx() {
-		return RX;
-	}
-	
-	public Register getRy() {
-		return RY;
-	}
+	public Register getRx() { return RX; }	
+	public Register getRy() { return RY; }
 
-	public Register getMfr() {
-		return mfr;
-	}
+	public Register getMfr() { return MFR; }
 
-	public Register getGpr0() {
-		return GPR0;
-	}
+	public Register getGpr0() { return GPR0; }
+	public Register getGpr1() { return GPR1; }
+	public Register getGpr2() { return GPR2; }
+	public Register getGpr3() { return GPR3; }
 
-	public Register getGpr1() {
-		return GPR1;
-	}
+	public Register getIx1() { return IX1; }
+	public Register getIx2() { return IX2; }
+	public Register getIx3() { return IX3; }
 
-	public Register getGpr2() {
-		return GPR2;
-	}
-
-	public Register getGpr3() {
-		return GPR3;
-	}
-
-	public Register getIx1() {
-		return IX1;
-	}
-
-	public Register getIx2() {
-		return IX2;
-	}
-
-	public Register getIx3() {
-		return IX3;
-	}
-
-	public RegisterFloat getFr0() {
-		return R0;
-	}
-
-	public RegisterFloat getFr1() {
-		return R1;
-	}
+	public RegisterFloat getFr0() { return R0; }
+	public RegisterFloat getFr1() { return R1; }
 }

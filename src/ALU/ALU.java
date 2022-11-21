@@ -1,3 +1,10 @@
+/**
+ * CSCI 6461 - Fall 2022
+ * 
+ * ALU Class controls the coded logic behind an
+ * Arithmetic Logic Unit found in a CPU
+ */
+
 package ALU;
 
 import javax.swing.*;
